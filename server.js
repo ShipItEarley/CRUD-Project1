@@ -1,3 +1,4 @@
+const bcrypt = require("bcrypt");
 const express = require("express");
 const app = express();
 const db = require("better-sqlite3")("ourApp.db");
@@ -75,7 +76,14 @@ app.post("/register", (req, res) => {
   }
 
   // save the new user into the database
-  db.prepare("INSERT INTO users (username, password) VALUE (?,?)");
+  const salt = bcrypt.genSaltSync(10);
+  req.body.password = bcrypt.hashSync(req.body.password, salt);
+
+  const ourStatment = db.prepare(
+    "INSERT INTO users (username, password) VALUES (?,?)"
+  );
+  ourStatment.run(req.body.username, req.body.password);
+  res.send("Thank You!");
   // log user in by providign a cookie
 });
 
