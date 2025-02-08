@@ -83,8 +83,16 @@ app.post("/register", (req, res) => {
     "INSERT INTO users (username, password) VALUES (?,?)"
   );
   ourStatment.run(req.body.username, req.body.password);
-  res.send("Thank You!");
+
   // log user in by providign a cookie
+  res.cookie("ourSimpleApp", "superTopSecVal", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "strict",
+    maxAge: 1000 * 60 * 60 * 24,
+  });
+
+  res.send("Thank You!");
 });
 
 app.listen(3000);
