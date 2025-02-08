@@ -37,7 +37,7 @@ app.use(function (req, res, next) {
 
   // decoding incoming cookie
   try {
-    const decoded = jwt.verfiy(req.cookies.ourSimpleApp, process.env.JWTVAL);
+    const decoded = jwt.verify(req.cookies.ourSimpleApp, process.env.JWTVAL);
     req.user = decoded;
   } catch (err) {
     req.user = false;
