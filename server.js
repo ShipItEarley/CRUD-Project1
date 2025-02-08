@@ -27,10 +27,24 @@ app.set("view engine", "ejs");
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static("public"));
 
+// middleware
+
 app.use(function (req, res, next) {
   res.locals.errors = [];
+
+  // decoding incoming cookie
+  try {
+    const decoded = jwt.verfiy(req.cookies.ourSimpleApp, process.env.JWTVAL);
+    req.user = decoded;
+  } catch (err) {
+    req.user = false;
+  }
+  res.locals.user = req.user;
+  console.log(req.user);
+
   next();
 });
+
 //-----------------Pages-------------
 
 app.get("/", (req, res) => {
