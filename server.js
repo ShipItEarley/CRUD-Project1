@@ -1,6 +1,7 @@
 require("dotenv").config();
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
+const cookie = require("cookie-parser");
 const express = require("express");
 const app = express();
 const db = require("better-sqlite3")("ourApp.db");
