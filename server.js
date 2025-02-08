@@ -16,6 +16,8 @@ const createTables = db.transaction(() => {
   ).run();
 });
 
+//
+
 createTables();
 
 app.set("view engine", "ejs");
@@ -73,7 +75,7 @@ app.post("/register", (req, res) => {
   }
 
   // save the new user into the database
-
+  db.prepare("INSERT INTO users (username, password) VALUE (?,?)");
   // log user in by providign a cookie
 });
 
