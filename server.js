@@ -1,3 +1,5 @@
+require("dotenv").config();
+const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const express = require("express");
 const app = express();
@@ -84,7 +86,9 @@ app.post("/register", (req, res) => {
   );
   ourStatment.run(req.body.username, req.body.password);
 
-  // log user in by providign a cookie
+  // log user in by providing a cookie
+
+  const ourTokenVal = jwt.sign({}, process.env.JWTVAL);
   res.cookie("ourSimpleApp", "superTopSecVal", {
     httpOnly: true,
     secure: true,
