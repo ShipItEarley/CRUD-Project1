@@ -84,12 +84,25 @@ app.post("/register", (req, res) => {
   const ourStatment = db.prepare(
     "INSERT INTO users (username, password) VALUES (?,?)"
   );
-  ourStatment.run(req.body.username, req.body.password);
+
+  const result = ourStatment.run(req.body.username, req.body.password);
+
+  // SQL DB -- getting id for cookie
+  const lookUpState = db.prepare("SELECT * FROM users WHERE ROWID = ?");
+  const ourUser = lookUpState.get(result.lastInsertRowid);
 
   // log user in by providing a cookie
 
-  const ourTokenVal = jwt.sign({}, process.env.JWTVAL);
-  res.cookie("ourSimpleApp", "superTopSecVal", {
+  const ourTokenVal = jwt.sign(
+    {
+      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
+      skyColor: "blue",
+      userid: ourUser.id,
+      username: ourUser.username,
+    },
+    process.env.JWTVAL
+  );
+  res.cookie("ourSimpleApp", ourTokenVal, {
     httpOnly: true,
     secure: true,
     sameSite: "strict",
