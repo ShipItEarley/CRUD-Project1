@@ -1,9 +1,8 @@
 require("dotenv").config();
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
-const cookie = require("cookie-parser");
+const cookieParser = require("cookie-parser");
 const express = require("express");
-const app = express();
 const db = require("better-sqlite3")("ourApp.db");
 db.pragma("journal_mode = WAL");
 
@@ -23,10 +22,13 @@ const createTables = db.transaction(() => {
 //
 
 createTables();
+// end of db setup
+const app = express();
 
 app.set("view engine", "ejs");
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static("public"));
+app.use(cookieParser());
 
 // middleware
 
