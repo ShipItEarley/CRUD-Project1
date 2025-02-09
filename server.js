@@ -1,104 +1,89 @@
-require("dotenv").config();
-const jwt = require("jsonwebtoken");
-const bcrypt = require("bcrypt");
-const cookieParser = require("cookie-parser");
-const express = require("express");
-const db = require("better-sqlite3")("ourApp.db");
-db.pragma("journal_mode = WAL");
+require("dotenv").config(); // Load environment variables from .env file
+const jwt = require("jsonwebtoken"); // Import JWT for authentication
+const bcrypt = require("bcrypt"); // Import bcrypt for password hashing
+const cookieParser = require("cookie-parser"); // Import cookie parser to handle cookies
+const express = require("express"); // Import Express framework
+const db = require("better-sqlite3")("ourApp.db"); // Initialize SQLite database
 
-//Database setup
+db.pragma("journal_mode = WAL"); // Enable Write-Ahead Logging for better performance
+
+// Create users table if it does not exist
 const createTables = db.transaction(() => {
   db.prepare(
-    `
-  CREATE TABLE IF NOT EXISTS users (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  username STRING NOT NULL UNIQUE,
-  password STRING NOT NULL
-  )
-  `
+    `CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username STRING NOT NULL UNIQUE,
+      password STRING NOT NULL
+    )`
   ).run();
 });
 
-//
+createTables(); // Execute table creation
 
-createTables();
-// end of db setup
-const app = express();
+const app = express(); // Initialize Express application
+app.set("view engine", "ejs"); // Set EJS as the templating engine
+app.use(express.urlencoded({ extended: false })); // Enable form data parsing
+app.use(express.static("public")); // Serve static files from 'public' folder
+app.use(cookieParser()); // Enable cookie parsing
 
-app.set("view engine", "ejs");
-app.use(express.urlencoded({ extended: false }));
-app.use(express.static("public"));
-app.use(cookieParser());
-
-// middleware
-
+// Middleware to check authentication and set user data
 app.use(function (req, res, next) {
-  res.locals.errors = [];
+  res.locals.errors = []; // Initialize an empty error list
 
-  // decoding incoming cookie
   try {
-    const decoded = jwt.verify(req.cookies.ourSimpleApp, process.env.JWTVAL);
-    req.user = decoded;
+    const decoded = jwt.verify(req.cookies.ourSimpleApp, process.env.JWTVAL); // Verify JWT token
+    req.user = decoded; // Set user data if valid
   } catch (err) {
-    req.user = false;
+    req.user = false; // Set user as false if token verification fails
   }
-  res.locals.user = req.user;
-  console.log(req.user);
+  res.locals.user = req.user; // Store user data in locals for templates
+  console.log(req.user); // Log user information
 
-  next();
+  next(); // Proceed to the next middleware
 });
 
-//-----------------Pages-------------
-
+// Homepage route
 app.get("/", (req, res) => {
-  if (req.user) {
-    return res.render("dashboard");
-  }
-
-  res.render("homepage");
+  if (req.user) return res.render("dashboard"); // If logged in, show dashboard
+  res.render("homepage"); // Otherwise, show homepage
 });
 
+// Login page route
 app.get("/login", (req, res) => {
-  res.render("login");
+  res.render("login"); // Render login page
 });
 
+// User registration route
 app.post("/register", (req, res) => {
-  const errors = [];
+  const errors = []; // Initialize error array
 
-  //checking the type of values entered -- not false for string
+  // Ensure username and password are strings
   if (typeof req.body.username !== "string") req.body.username = "";
   if (typeof req.body.password !== "string") req.body.password = "";
-  // trimming any white space
-  req.body.username = req.body.username.trim();
+  req.body.username = req.body.username.trim(); // Remove whitespace from username
 
-  // ----------Username Rules-----------//
-
-  // check for if they didnt write anything
-  if (!req.body.username) errors.push("You must provide username");
-  // checking for character length
-  if (req.body.username && req.body.username.length < 3)
-    errors.push("Username cant be shorter than 3 characters");
-  if (req.body.username && req.body.username.length > 10)
-    errors.push("Username cant be longer than 10 characters");
-  //checking for symbols in username
-  if (req.body.username && !req.body.username.match(/^[a-zA-Z0-9]+$/))
+  // Validate username
+  if (!req.body.username) errors.push("You must provide a username");
+  if (req.body.username.length < 3)
+    errors.push("Username must be at least 3 characters long");
+  if (req.body.username.length > 10)
+    errors.push("Username cannot exceed 10 characters");
+  if (!req.body.username.match(/^[a-zA-Z0-9]+$/))
     errors.push("Username can only contain letters and numbers");
 
-  // ----------Password Rules-----------//
+  // Validate password
+  if (!req.body.password) errors.push("You must provide a password");
+  if (req.body.password.length < 5)
+    errors.push("Password must be at least 5 characters long");
+  if (req.body.password.length > 12)
+    errors.push("Password cannot exceed 12 characters");
 
-  // check for if they didnt write anything
-  if (!req.body.password) errors.push("You must provide password");
-  // checking for character length
-  if (req.body.password && req.body.password.length < 5)
-    errors.push("Password cant be shorter than 5 characters");
-  if (req.body.password && req.body.password.length > 12)
-    errors.push("Password cant be longer than 12 characters");
-
+  // If there are errors, re-render homepage with error messages
   if (errors.length) {
     return res.render("homepage", { errors });
   }
 
-  // **Check if username already exists**
+  // Check if username is already taken
   const checkUser = db.prepare("SELECT * FROM users WHERE username = ?");
   const existingUser = checkUser.get(req.body.username);
 
@@ -107,39 +92,40 @@ app.post("/register", (req, res) => {
     return res.render("homepage", { errors });
   }
 
-  // save the new user into the database
+  // Hash the password for security
   const salt = bcrypt.genSaltSync(10);
   req.body.password = bcrypt.hashSync(req.body.password, salt);
 
+  // Insert new user into the database
   const ourStatment = db.prepare(
     "INSERT INTO users (username, password) VALUES (?,?)"
   );
-
   const result = ourStatment.run(req.body.username, req.body.password);
 
-  // SQL DB -- getting id for cookie
+  // Retrieve newly inserted user
   const lookUpState = db.prepare("SELECT * FROM users WHERE ROWID = ?");
   const ourUser = lookUpState.get(result.lastInsertRowid);
 
-  // log user in by providing a cookie
-
+  // Generate JWT token for authentication
   const ourTokenVal = jwt.sign(
     {
-      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
-      skyColor: "blue",
-      userid: ourUser.id,
-      username: ourUser.username,
+      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24, // Token expires in 24 hours
+      skyColor: "blue", // Example payload data
+      userid: ourUser.id, // Store user ID in token
+      username: ourUser.username, // Store username in token
     },
     process.env.JWTVAL
   );
+
+  // Store JWT token in HTTP-only, secure cookie
   res.cookie("ourSimpleApp", ourTokenVal, {
     httpOnly: true,
     secure: true,
     sameSite: "strict",
-    maxAge: 1000 * 60 * 60 * 24,
+    maxAge: 1000 * 60 * 60 * 24, // Cookie valid for 24 hours
   });
 
-  res.send("Thank You!");
+  res.send("Thank You!"); // Send response after successful registration
 });
 
-app.listen(3000);
+app.listen(3000); // Start server on port 3000
