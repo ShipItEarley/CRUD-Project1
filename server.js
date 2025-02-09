@@ -98,6 +98,15 @@ app.post("/register", (req, res) => {
     return res.render("homepage", { errors });
   }
 
+  // **Check if username already exists**
+  const checkUser = db.prepare("SELECT * FROM users WHERE username = ?");
+  const existingUser = checkUser.get(req.body.username);
+
+  if (existingUser) {
+    errors.push("Username already taken");
+    return res.render("homepage", { errors });
+  }
+
   // save the new user into the database
   const salt = bcrypt.genSaltSync(10);
   req.body.password = bcrypt.hashSync(req.body.password, salt);
