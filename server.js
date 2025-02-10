@@ -37,8 +37,6 @@ app.use(function (req, res, next) {
     req.user = false; // Set user as false if token verification fails
   }
   res.locals.user = req.user; // Store user data in locals for templates
-  console.log(req.user); // Log user information
-
   next(); // Proceed to the next middleware
 });
 
@@ -62,9 +60,10 @@ app.get("/logout", (req, res) => {
 app.post("/login", (req, res) => {
   let errors = [];
 
-  // Sanitize inputs
+  // Clean inputs
   req.body.username =
     typeof req.body.username === "string" ? req.body.username.trim() : "";
+
   req.body.password =
     typeof req.body.password === "string" ? req.body.password : "";
 
@@ -90,6 +89,7 @@ app.post("/login", (req, res) => {
   }
 
   const matchOrNot = bcrypt.compareSync(req.body.password, userInQue.password);
+
   if (!matchOrNot) {
     errors = ["Invalid username / Password"];
     return res.render("login", { errors });
@@ -116,11 +116,12 @@ app.post("/login", (req, res) => {
 });
 
 // Dashboard
+// Redirect to homepage if not logged in ---- Render dashboard  if logged in
 app.get("/dashboard", (req, res) => {
   if (!req.user) {
-    return res.redirect("/"); // Redirect to homepage if not logged in
+    return res.redirect("/");
   }
-  res.render("dashboard"); // Render the dashboard page if logged in
+  res.render("dashboard");
 });
 
 // User registration
@@ -130,21 +131,27 @@ app.post("/register", (req, res) => {
   // Ensure username and password are strings
   if (typeof req.body.username !== "string") req.body.username = "";
   if (typeof req.body.password !== "string") req.body.password = "";
-  req.body.username = req.body.username.trim(); // Remove whitespace from username
+
+  req.body.username = req.body.username.trim();
 
   // Validate username
   if (!req.body.username) errors.push("You must provide a username");
+
   if (req.body.username.length < 3)
     errors.push("Username must be at least 3 characters long");
+
   if (req.body.username.length > 10)
     errors.push("Username cannot exceed 10 characters");
+
   if (!req.body.username.match(/^[a-zA-Z0-9]+$/))
     errors.push("Username can only contain letters and numbers");
 
   // Validate password
   if (!req.body.password) errors.push("You must provide a password");
+
   if (req.body.password.length < 5)
     errors.push("Password must be at least 5 characters long");
+
   if (req.body.password.length > 12)
     errors.push("Password cannot exceed 12 characters");
 
@@ -158,7 +165,7 @@ app.post("/register", (req, res) => {
   const existingUser = checkUser.get(req.body.username);
 
   if (existingUser) {
-    errors.push("Username Unavailable");
+    errors.push("Username Already Taken");
     return res.render("homepage", { errors });
   }
 
@@ -170,16 +177,18 @@ app.post("/register", (req, res) => {
   const ourStatment = db.prepare(
     "INSERT INTO users (username, password) VALUES (?,?)"
   );
+
   const result = ourStatment.run(req.body.username, req.body.password);
 
   // Retrieve newly inserted user
   const lookUpState = db.prepare("SELECT * FROM users WHERE ROWID = ?");
+
   const ourUser = lookUpState.get(result.lastInsertRowid);
 
   // Generate JWT token for authentication
   const ourTokenVal = jwt.sign(
     {
-      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24, // Token expires in 24 hours
+      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
       skyColor: "blue", // Example payload data
       userid: ourUser.id, // Store user ID in token
       username: ourUser.username, // Store username in token
