@@ -56,7 +56,11 @@ app.use(function (req, res, next) {
 // ------------Page Routes--------
 
 app.get("/", (req, res) => {
-  if (req.user) return res.render("dashboard"); // If logged in, show dashboard
+  if (req.user) {
+    const postsStatment = db.prepare("SELECT * FROM posts WHERE authorID = ?");
+    const posts = postsStatment.all(req.user.userid);
+    return res.render("dashboard", { posts });
+  } // If logged in, show dashboard
   res.render("homepage"); // Otherwise, show homepage
 });
 
@@ -172,6 +176,11 @@ function sharedPostVal(req) {
 
   return errors;
 }
+
+app.get("edit-post/:id", (req, res) => {
+  // Pull up Current Post
+  //Redirect if Not Author
+});
 
 app.get("/post/:id", (req, res) => {
   const statement = db.prepare(

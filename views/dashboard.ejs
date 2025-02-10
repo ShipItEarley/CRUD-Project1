@@ -5,12 +5,16 @@
     <%- include('includes/header') %>
     <main>
       <h2>Welcome to Your Dashboard</h2>
-      <p>
-        Lorem, ipsum dolor sit amet consectetur adipisicing elit. Maxime
-        necessitatibus non eveniet, repellendus fugit in? Quis voluptate nisi
-        vel aperiam. Officia officiis facere molestias laborum ut provident et
-        accusantium voluptatem.
-      </p>
+      <ul>
+        <% posts.forEach(post => {%>
+        <li>
+          <a href="/post/<%= post.id %>"><%= post.title %></a> on <%= new
+          Date(post.createdDate).getMonth() + 1 %>/<%= new
+          Date(post.createdDate).getDate() %>/<%= new
+          Date(post.createdDate).getFullYear() %>
+        </li>
+        <%}); %>
+      </ul>
     </main>
     <%- include('includes/footer') %>
   </body>
