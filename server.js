@@ -42,20 +42,90 @@ app.use(function (req, res, next) {
   next(); // Proceed to the next middleware
 });
 
-// Homepage route
+// ------------Page Routes--------
+
 app.get("/", (req, res) => {
   if (req.user) return res.render("dashboard"); // If logged in, show dashboard
   res.render("homepage"); // Otherwise, show homepage
 });
 
-// Login page route
+// Login
 app.get("/login", (req, res) => {
-  res.render("login"); // Render login page
+  res.render("login");
 });
 
-// User registration route
+app.get("/logout", (req, res) => {
+  res.clearCookie("ourSimpleApp");
+  res.redirect("/");
+});
+
+app.post("/login", (req, res) => {
+  let errors = [];
+
+  // Sanitize inputs
+  req.body.username =
+    typeof req.body.username === "string" ? req.body.username.trim() : "";
+  req.body.password =
+    typeof req.body.password === "string" ? req.body.password : "";
+
+  // Combined validation check
+  if (req.body.username === "" || req.body.password === "") {
+    errors.push("Invalid username / Password");
+  }
+
+  if (errors.length) {
+    return res.render("login", {
+      errors,
+      username: req.body.username,
+      password: req.body.password,
+    });
+  }
+
+  const userInQuestion = db.prepare("SELECT * FROM users WHERE USERNAME = ?");
+  const userInQue = userInQuestion.get(req.body.username);
+
+  if (!userInQue) {
+    errors = ["Invalid username / Password"];
+    return res.render("login", { errors });
+  }
+
+  const matchOrNot = bcrypt.compareSync(req.body.password, userInQue.password);
+  if (!matchOrNot) {
+    errors = ["Invalid username / Password"];
+    return res.render("login", { errors });
+  }
+
+  const ourTokenVal = jwt.sign(
+    {
+      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
+      skyColor: "blue",
+      userid: userInQue.id,
+      username: userInQue.username,
+    },
+    process.env.JWTVAL
+  );
+
+  res.cookie("ourSimpleApp", ourTokenVal, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "strict",
+    maxAge: 1000 * 60 * 60 * 24,
+  });
+
+  res.redirect("/dashboard");
+});
+
+// Dashboard
+app.get("/dashboard", (req, res) => {
+  if (!req.user) {
+    return res.redirect("/"); // Redirect to homepage if not logged in
+  }
+  res.render("dashboard"); // Render the dashboard page if logged in
+});
+
+// User registration
 app.post("/register", (req, res) => {
-  const errors = []; // Initialize error array
+  const errors = [];
 
   // Ensure username and password are strings
   if (typeof req.body.username !== "string") req.body.username = "";
@@ -88,7 +158,7 @@ app.post("/register", (req, res) => {
   const existingUser = checkUser.get(req.body.username);
 
   if (existingUser) {
-    errors.push("Username already taken");
+    errors.push("Username Unavailable");
     return res.render("homepage", { errors });
   }
 
@@ -125,7 +195,7 @@ app.post("/register", (req, res) => {
     maxAge: 1000 * 60 * 60 * 24, // Cookie valid for 24 hours
   });
 
-  res.send("Thank You!"); // Send response after successful registration
+  res.redirect("/dashboard");
 });
 
 app.listen(3000); // Start server on port 3000
