@@ -5,6 +5,10 @@
     <%- include('includes/header') %>
     <main>
       <h1><%= post.title %></h1>
+      <article>
+        <small>posted by username on date </small>
+        <div><%= post.body %></div>
+      </article>
     </main>
     <%- include('includes/footer') %>
   </body>
