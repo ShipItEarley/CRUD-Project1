@@ -184,12 +184,17 @@ app.post("/create-post", mustBeLoggedIn, (req, res) => {
   const ourStatment = db.prepare(
     "INSERT INTO posts (title, body, authorID, createdDate ) VALUES(?,?,?,?)"
   );
+
   const result = ourStatment.run(
     req.body.title,
     req.body.body,
     req.user.userid,
     new Date().toISOString()
   );
+
+  const getPostStatement = db.prepare("SELECT * FROM posts WHERE ROWID = ?");
+  const realPost = getPostStatement.get(result.lastInsertRowid);
+  res.redirect(`/post/${realPost.id}`);
 });
 
 // User registration
