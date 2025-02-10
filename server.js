@@ -174,7 +174,9 @@ function sharedPostVal(req) {
 }
 
 app.get("/post/:id", (req, res) => {
-  const statement = db.prepare("SELECT * FROM posts WHERE id = ?");
+  const statement = db.prepare(
+    "SELECT posts.*, users.username FROM posts INNER JOIN users ON posts.authorID = users.id WHERE posts.id = ?"
+  );
   const post = statement.get(req.params.id);
 
   if (!post) {
