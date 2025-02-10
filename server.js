@@ -1,8 +1,10 @@
 require("dotenv").config(); // Load environment variables from .env file
+const sanitizeHTML = require("sanitize-html");
 const jwt = require("jsonwebtoken"); // Import JWT for authentication
 const bcrypt = require("bcrypt"); // Import bcrypt for password hashing
 const cookieParser = require("cookie-parser"); // Import cookie parser to handle cookies
 const express = require("express"); // Import Express framework
+const sanitizeHtml = require("sanitize-html");
 const db = require("better-sqlite3")("ourApp.db"); // Initialize SQLite database
 
 db.pragma("journal_mode = WAL"); // Enable Write-Ahead Logging for better performance
@@ -15,6 +17,17 @@ const createTables = db.transaction(() => {
       username STRING NOT NULL UNIQUE,
       password STRING NOT NULL
     )`
+  ).run();
+
+  db.prepare(
+    `
+    CREATE TABLE IF NOT EXISTS posts(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    createdDate TEXT,
+    title STRING NOT NULL,
+    body TEXT NOT NULL,
+    authorID INTEGER,
+    FOREIGN KEY (authorID) REFERENCES users (id))`
   ).run();
 });
 
@@ -122,6 +135,61 @@ app.get("/dashboard", (req, res) => {
     return res.redirect("/");
   }
   res.render("dashboard");
+});
+
+// Middleware -- Verify login for create post
+
+function mustBeLoggedIn(req, res, next) {
+  if (req.user) {
+    return next();
+  }
+  return res.redirect("/");
+}
+
+app.get("/create-post", mustBeLoggedIn, (req, res) => {
+  res.render("create-post");
+});
+
+function sharedPostVal(req) {
+  const errors = [];
+
+  if (typeof req.body.title !== "string") req.body.title = "";
+  if (typeof req.body.body !== "string") req.body.body = "";
+
+  // Trim, Sanitize or Strip out HTML
+
+  req.body.title = sanitizeHtml(req.body.title.trim(), {
+    allowedTags: [],
+    allowedAttributes: {},
+  });
+  req.body.body = sanitizeHtml(req.body.body.trim(), {
+    allowedTags: [],
+    allowedAttributes: {},
+  });
+
+  if (!req.body.title) errors.push("You must provide a title.");
+  if (!req.body.body) errors.push("You must provide content.");
+
+  return errors;
+}
+
+app.post("/create-post", mustBeLoggedIn, (req, res) => {
+  const errors = sharedPostVal(req);
+
+  if (errors.length) {
+    return res.render("create-post", { errors });
+  }
+
+  // Save Posts To DB
+  const ourStatment = db.prepare(
+    "INSERT INTO posts (title, body, authorID, createdDate ) VALUES(?,?,?,?)"
+  );
+  const result = ourStatment.run(
+    req.body.title,
+    req.body.body,
+    req.user.userid,
+    new Date().toISOString()
+  );
 });
 
 // User registration
