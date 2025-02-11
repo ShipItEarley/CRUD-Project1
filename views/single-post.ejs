@@ -14,7 +14,7 @@
         </small>
         <div><%= post.body %></div>
       </article>
-
+      <% if (isAuthor){%>
       <a href="/edit-post/<%= post.id  %>" class="button">Edit Post</a>
       <form
         style="display: inline"
@@ -23,6 +23,7 @@
       >
         <button>Delete Post</button>
       </form>
+      <% }%>
     </main>
     <%- include('includes/footer') %>
   </body>
