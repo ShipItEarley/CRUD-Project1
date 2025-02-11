@@ -41,6 +41,31 @@ app.use(cookieParser()); // Enable cookie parsing
 
 // Middleware to check authentication and set user data
 app.use(function (req, res, next) {
+  // markdown function
+
+  res.locals.filterUserHTML = function (content) {
+    return sanitizeHtml(markdown.parse(content), {
+      allowedTags: [
+        "p",
+        "br",
+        "ul",
+        "li",
+        "ol",
+        "strong",
+        "bold",
+        "i",
+        "em",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+      ],
+      allowedAttributes: {},
+    });
+  };
+
   res.locals.errors = []; // Initialize an empty error list
 
   try {
@@ -57,10 +82,13 @@ app.use(function (req, res, next) {
 
 app.get("/", (req, res) => {
   if (req.user) {
-    const postsStatment = db.prepare("SELECT * FROM posts WHERE authorID = ?");
+    const postsStatment = db.prepare(
+      "SELECT * FROM posts WHERE authorID = ? ORDER BY createdDate DESC"
+    );
     const posts = postsStatment.all(req.user.userid);
     return res.render("dashboard", { posts });
   } // If logged in, show dashboard
+
   res.render("homepage"); // Otherwise, show homepage
 });
 
