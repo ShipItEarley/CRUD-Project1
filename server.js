@@ -395,4 +395,4 @@ app.post("/register", (req, res) => {
   res.redirect("/dashboard");
 });
 
-app.listen(3000); // Start server on port 3000
+app.listen(8000); // Start server on port 3000
