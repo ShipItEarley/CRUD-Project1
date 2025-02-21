@@ -392,7 +392,7 @@ app.post("/register", (req, res) => {
     maxAge: 1000 * 60 * 60 * 24, // Cookie valid for 24 hours
   });
 
-  res.redirect("/dashboard");
+  res.redirect("/");
 });
 
 app.listen(8000); // Start server on port 3000
